@@ -30,6 +30,7 @@ UpdateService.start(this, "xxx.apk(下载地址)",
 注：smallIco 有个需要主要的地方，[详情 Android通知栏的微技巧](http://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650235923&idx=1&sn=af1fc1a6b60282732d94b0e7a354488f&scene=1&srcid=0517c0t12GnMgc5tWAkEMHNs#)
 
 
+
 ### Gradle
 
 ```groovy
