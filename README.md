@@ -2,7 +2,7 @@ UpdateApp
 ===
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/yaming116/UpdateApp/blob/master/LICENSE)
-
+[![Jitpack](https://www.jitpack.io/v/yaming116/UpdateApp.svg)](https://www.jitpack.io/#yaming116/UpdateApp)
 
 开箱即用的app更新，主要负责软件下载、软件安装等 Permission和Service默认添加在aar包里面的，如果使用gradle不需要
 在意下面的配置了。
