@@ -1,5 +1,6 @@
 package me.shenfan.updateapp.sample;
 
+import android.app.Notification;
 import android.app.Service;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -13,6 +14,8 @@ import android.view.MenuItem;
 import me.shenfan.updateapp.UpdateService;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String URL = "http://27.221.81.15/dd.myapp.com/16891/63C4DA61823B87026BBC8C22BBBE212F.apk?mkey=575e443c53406290&f=8b5d&c=0&fsname=com.daimajia.gold_3.2.0_80.apk&p=.apk";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,8 +41,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void update(View view){
-        UpdateService.start(this, "http://27.221.81.15/dd.myapp.com/16891/63C4DA61823B87026BBC8C22BBBE212F.apk?mkey=575e443c53406290&f=8b5d&c=0&fsname=com.daimajia.gold_3.2.0_80.apk&p=.apk",
-                R.mipmap.ic_launcher, R.mipmap.ic_launcher);
+        UpdateService.Builder.create(URL).build(this);
+    }
+
+    public void updateFlag(View view){
+        UpdateService.Builder.create(URL)
+                .setStoreDir("update/flag")
+                .setDownloadSuccessNotificationFlag(Notification.DEFAULT_ALL)
+                .setDownloadErrorNotificationFlag(Notification.DEFAULT_ALL)
+                .build(this);
+    }
+
+    public void updateStore(View view){
+        UpdateService.Builder.create(URL)
+                .setStoreDir("update/store")
+                .build(this);
     }
 
     @Override
