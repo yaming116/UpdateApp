@@ -23,13 +23,25 @@ UpdateApp
 ### Use
 
 ```java
-UpdateService.start(this, "xxx.apk(下载地址)",
-                R.mipmap.ic_launcher, R.mipmap.ic_launcher (smallIco));
+   UpdateService.Builder.create(URL).build(this);
 ```
+
 
 注：smallIco 有个需要主要的地方，[详情 Android通知栏的微技巧](http://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650235923&idx=1&sn=af1fc1a6b60282732d94b0e7a354488f&scene=1&srcid=0517c0t12GnMgc5tWAkEMHNs#)
 
 
+# Params
+
+|参数|描述|
+   -:-
+|downloadUrl|下载地址|
+|icoResId|Notification 的icon，默认应用的icon|
+|icoSmallResId|Notification 右下角的icon，默认应用的icon|
+|storeDir|保存在sdcard路径，默认在sdcard/Android/package/update|
+|updateProgress| 刷新notification 进度条，默认每次下载1%更新一次|
+|downloadNotificationFlag|下载进行中的Notification Flag|
+|downloadErrorNotificationFlag|下载失败的Notification Flag|
+|downloadSuccessNotificationFlag|下载成功的Notification Flag|
 
 ### Gradle
 
@@ -42,7 +54,7 @@ allprojects {
 }
 
 dependencies {
-    compile 'com.github.yaming116:UpdateApp:1.0.0'
+    compile 'com.github.yaming116:UpdateApp:1.0.1'
 }
 ```
 
