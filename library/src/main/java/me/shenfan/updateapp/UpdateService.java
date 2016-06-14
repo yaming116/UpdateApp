@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v7.app.NotificationCompat;
@@ -33,19 +34,32 @@ public class UpdateService extends Service {
     public static boolean DEBUG = false;
 
     //下载大小通知频率
-    public static final int UPDATE_NUMBER_SIZE = 20 * 1024;
+    public static final int UPDATE_NUMBER_SIZE = 1;
+    public static final int DEFAULT_RES_ID = -1;
 
     //params
-    private static String URL = "download_url";
-    private static String ICO_RES_ID = "ico_res_id";
-    private static String ICO_SMALL_RES_ID = "ico_small_res_id";
+    private static final String URL = "downloadUrl";
+    private static final String ICO_RES_ID = "icoResId";
+    private static final String ICO_SMALL_RES_ID = "icoSmallResId";
+    private static final String UPDATE_PROGRESS = "updateProgress";
+    private static final String STORE_DIR = "storeDir";
+    private static final String DOWNLOAD_NOTIFICATION_FLAG = "downloadNotificationFlag";
+    private static final String DOWNLOAD_SUCCESS_NOTIFICATION_FLAG = "downloadSuccessNotificationFlag";
+    private static final String DOWNLOAD_ERROR_NOTIFICATION_FLAG = "downloadErrorNotificationFlag";
+
+
+    private String downloadUrl;
+    private int icoResId;             //default app ico
+    private int icoSmallResId;
+    private int updateProgress;   //update notification progress when it add number
+    private String storeDir;          //default sdcard/Android/package/update
+    private int downloadNotificationFlag;
+    private int downloadSuccessNotificationFlag;
+    private int downloadErrorNotificationFlag;
 
 
     private boolean startDownload;//开始下载
-    private String downloadUrl;
-    private int icoResId;
-    private int icoSmallResId;
-
+    private int lastProgressNumber;
     private NotificationCompat.Builder builder;
     private NotificationManager manager;
     private int notifyId;
@@ -57,24 +71,6 @@ public class UpdateService extends Service {
     public static void debug(){
         DEBUG = true;
     }
-
-    /**
-     * start download
-     *
-     * @param context
-     * @param url
-     * @param icoResId
-     * @param icoSmallResId
-     */
-    public static void start(Context context, String url, int icoResId, int icoSmallResId){
-        Intent intent = new Intent();
-        intent.setClass(context, UpdateService.class);
-        intent.putExtra(URL, url);
-        intent.putExtra(ICO_RES_ID, icoResId);
-        intent.putExtra(ICO_SMALL_RES_ID, icoSmallResId);
-        context.startService(intent);
-    }
-
 
     private static Intent installIntent(String path){
         Uri uri = Uri.fromFile(new File(path));
@@ -98,13 +94,17 @@ public class UpdateService extends Service {
         return downloadUrl.substring(downloadUrl.lastIndexOf("/"));
     }
 
-    private static File getDownloadDir(Context context){
+    private static File getDownloadDir(UpdateService service){
         File downloadDir = null;
         if (android.os.Environment.getExternalStorageState().equals(
                 android.os.Environment.MEDIA_MOUNTED)) {
-            downloadDir = new File(context.getExternalCacheDir(), "update");
+            if (service.storeDir != null){
+                downloadDir = new File(Environment.getExternalStorageDirectory(), service.storeDir);
+            }else {
+                downloadDir = new File(service.getExternalCacheDir(), "update");
+            }
         } else {
-            downloadDir = new File(context.getCacheDir(), "update");
+            downloadDir = new File(service.getCacheDir(), "update");
         }
         if (!downloadDir.exists()) {
             downloadDir.mkdirs();
@@ -124,8 +124,26 @@ public class UpdateService extends Service {
         if (!startDownload && intent != null){
             startDownload = true;
             downloadUrl = intent.getStringExtra(URL);
-            icoResId = intent.getIntExtra(ICO_RES_ID, -1);
-            icoSmallResId = intent.getIntExtra(ICO_SMALL_RES_ID, -1);
+            icoResId = intent.getIntExtra(ICO_RES_ID, DEFAULT_RES_ID);
+            icoSmallResId = intent.getIntExtra(ICO_SMALL_RES_ID, DEFAULT_RES_ID);
+            storeDir = intent.getStringExtra(STORE_DIR);
+            updateProgress = intent.getIntExtra(UPDATE_PROGRESS, UPDATE_NUMBER_SIZE);
+            downloadNotificationFlag = intent.getIntExtra(DOWNLOAD_NOTIFICATION_FLAG, 0);
+            downloadErrorNotificationFlag = intent.getIntExtra(DOWNLOAD_ERROR_NOTIFICATION_FLAG, 0);
+            downloadSuccessNotificationFlag = intent.getIntExtra(DOWNLOAD_SUCCESS_NOTIFICATION_FLAG, 0);
+
+
+            if (DEBUG){
+                Log.d(TAG, "downloadUrl: " + downloadUrl);
+                Log.d(TAG, "icoResId: " + icoResId);
+                Log.d(TAG, "icoSmallResId: " + icoSmallResId);
+                Log.d(TAG, "storeDir: " + storeDir);
+                Log.d(TAG, "updateProgress: " + updateProgress);
+                Log.d(TAG, "downloadNotificationFlag: " + downloadNotificationFlag);
+                Log.d(TAG, "downloadErrorNotificationFlag: " + downloadErrorNotificationFlag);
+                Log.d(TAG, "downloadSuccessNotificationFlag: " + downloadSuccessNotificationFlag);
+            }
+
             notifyId = startId;
             buildNotification();
             new DownloadApk(this).execute(downloadUrl);
@@ -158,12 +176,11 @@ public class UpdateService extends Service {
         builder = new NotificationCompat.Builder(this);
         builder.setContentTitle(getString(R.string.update_app_model_prepare, appName))
                 .setWhen(System.currentTimeMillis())
-                .setSmallIcon(icoSmallResId)
                 .setProgress(100, 1, false)
+                .setSmallIcon(icoSmallResId)
                 .setLargeIcon(BitmapFactory.decodeResource(
                         getResources(), icoResId))
-                .setDefaults(Notification.DEFAULT_ALL)
-                .build();
+                .setDefaults(downloadNotificationFlag);
 
         manager.notify(notifyId, builder.build());
     }
@@ -174,10 +191,17 @@ public class UpdateService extends Service {
         manager.notify(notifyId, builder.build());
     }
 
+    /**
+     *
+     * @param progress download percent , max 100
+     */
     private void update(int progress){
-        builder.setProgress(100, progress, false);
-        builder.setContentText(getString(R.string.update_app_model_progress, progress));
-        manager.notify(notifyId, builder.build());
+        if (progress - lastProgressNumber > updateProgress){
+            lastProgressNumber = progress;
+            builder.setProgress(100, progress, false);
+            builder.setContentText(getString(R.string.update_app_model_progress, progress, "%"));
+            manager.notify(notifyId, builder.build());
+        }
     }
 
     private void success(String path) {
@@ -186,7 +210,7 @@ public class UpdateService extends Service {
         Intent i = installIntent(path);
         PendingIntent intent = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(intent);
-        builder.setDefaults(Notification.FLAG_AUTO_CANCEL);
+        builder.setDefaults(downloadSuccessNotificationFlag);
         Notification n = builder.build();
         n.contentIntent = intent;
         manager.notify(notifyId, n);
@@ -201,6 +225,7 @@ public class UpdateService extends Service {
         builder.setContentText(getString(R.string.update_app_model_error));
         builder.setContentIntent(intent);
         builder.setProgress(0, 0, false);
+        builder.setDefaults(downloadErrorNotificationFlag);
         Notification n = builder.build();
         n.contentIntent = intent;
         manager.notify(notifyId, n);
@@ -212,7 +237,7 @@ public class UpdateService extends Service {
         private WeakReference<UpdateService> updateServiceWeakReference;
 
         public DownloadApk(UpdateService service){
-            updateServiceWeakReference = new WeakReference<UpdateService>(service);
+            updateServiceWeakReference = new WeakReference<>(service);
         }
 
         @Override
@@ -274,18 +299,13 @@ public class UpdateService extends Service {
                 fos = new FileOutputStream(file, false);
                 byte buffer[] = new byte[4096];
 
-                int readsize = 0;
+                int readSize = 0;
                 int currentSize = 0;
-                int notifySize = 0;
 
-                while ((readsize = is.read(buffer)) > 0) {
-                    fos.write(buffer, 0, readsize);
-                    currentSize += readsize;
-                    notifySize += readsize;
-                    if (notifySize > UPDATE_NUMBER_SIZE) {
-                        notifySize = 0;
-                        publishProgress((currentSize * 100 / updateTotalSize));
-                    }
+                while ((readSize = is.read(buffer)) > 0) {
+                    fos.write(buffer, 0, readSize);
+                    currentSize += readSize;
+                    publishProgress((currentSize * 100 / updateTotalSize));
                 }
                 // download success
             } catch (Exception e) {
@@ -336,6 +356,145 @@ public class UpdateService extends Service {
                     service.error();
                 }
             }
+        }
+    }
+
+
+    /**
+     * a builder class helper use UpdateService
+     */
+    public static class Builder{
+
+        private String downloadUrl;
+        private int icoResId = DEFAULT_RES_ID;             //default app ico
+        private int icoSmallResId = DEFAULT_RES_ID;
+        private int updateProgress = UPDATE_NUMBER_SIZE;   //update notification progress when it add number
+        private String storeDir;          //default sdcard/Android/package/update
+        private int downloadNotificationFlag;
+        private int downloadSuccessNotificationFlag;
+        private int downloadErrorNotificationFlag;
+
+        protected Builder(String downloadUrl){
+            this.downloadUrl = downloadUrl;
+        }
+
+        public static Builder create(String downloadUrl){
+            if (downloadUrl == null) {
+                throw new NullPointerException("downloadUrl == null");
+            }
+            return new Builder(downloadUrl);
+        }
+
+        public String getDownloadUrl() {
+            return downloadUrl;
+        }
+
+        public int getIcoResId() {
+            return icoResId;
+        }
+
+        public Builder setIcoResId(int icoResId) {
+            this.icoResId = icoResId;
+            return this;
+        }
+
+        public int getIcoSmallResId() {
+            return icoSmallResId;
+        }
+
+        public Builder setIcoSmallResId(int icoSmallResId) {
+            this.icoSmallResId = icoSmallResId;
+            return this;
+        }
+
+        public int getUpdateProgress() {
+            return updateProgress;
+        }
+
+        public Builder setUpdateProgress(int updateProgress) {
+            if (updateProgress < 1){
+                throw new IllegalArgumentException("updateProgress < 1");
+            }
+            this.updateProgress = updateProgress;
+            return this;
+        }
+
+        public String getStoreDir() {
+            return storeDir;
+        }
+
+        public Builder setStoreDir(String storeDir) {
+            this.storeDir = storeDir;
+            return this;
+        }
+
+        public int getDownloadNotificationFlag() {
+            return downloadNotificationFlag;
+        }
+
+        public Builder setDownloadNotificationFlag(int downloadNotificationFlag) {
+            this.downloadNotificationFlag = downloadNotificationFlag;
+            return this;
+        }
+
+        public int getDownloadSuccessNotificationFlag() {
+            return downloadSuccessNotificationFlag;
+        }
+
+        public Builder setDownloadSuccessNotificationFlag(int downloadSuccessNotificationFlag) {
+            this.downloadSuccessNotificationFlag = downloadSuccessNotificationFlag;
+            return this;
+        }
+
+        public int getDownloadErrorNotificationFlag() {
+            return downloadErrorNotificationFlag;
+        }
+
+        public Builder setDownloadErrorNotificationFlag(int downloadErrorNotificationFlag) {
+            this.downloadErrorNotificationFlag = downloadErrorNotificationFlag;
+            return this;
+        }
+
+        public Builder build(Context context){
+            if (context == null){
+                throw new NullPointerException("context == null");
+            }
+            Intent intent = new Intent();
+            intent.setClass(context, UpdateService.class);
+            intent.putExtra(URL, downloadUrl);
+
+            if (icoResId == DEFAULT_RES_ID){
+                icoResId = getIcon(context);
+            }
+
+            if (icoSmallResId == DEFAULT_RES_ID){
+                icoSmallResId = icoResId;
+            }
+            intent.putExtra(ICO_RES_ID, icoResId);
+            intent.putExtra(STORE_DIR, storeDir);
+            intent.putExtra(ICO_SMALL_RES_ID, icoSmallResId);
+            intent.putExtra(UPDATE_PROGRESS, updateProgress);
+            intent.putExtra(DOWNLOAD_NOTIFICATION_FLAG, downloadNotificationFlag);
+            intent.putExtra(DOWNLOAD_SUCCESS_NOTIFICATION_FLAG, downloadSuccessNotificationFlag);
+            intent.putExtra(DOWNLOAD_ERROR_NOTIFICATION_FLAG, downloadErrorNotificationFlag);
+            context.startService(intent);
+
+            return this;
+        }
+
+        private int getIcon(Context context){
+
+            final PackageManager packageManager = context.getPackageManager();
+            ApplicationInfo appInfo = null;
+            try {
+                appInfo = packageManager.getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+            if (appInfo != null){
+                return appInfo.icon;
+            }
+            return 0;
         }
     }
 
