@@ -33,7 +33,7 @@ UpdateApp
 # Params
 
 |参数|描述|
-   -:-
+|----|:---|
 |downloadUrl|下载地址|
 |icoResId|Notification 的icon，默认应用的icon|
 |icoSmallResId|Notification 右下角的icon，默认应用的icon|
