@@ -4,11 +4,8 @@ UpdateApp
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/yaming116/UpdateApp/blob/master/LICENSE)
 [![Jitpack](https://www.jitpack.io/v/yaming116/UpdateApp.svg)](https://www.jitpack.io/#yaming116/UpdateApp)
 
-[中文说明](https://github.com/yaming116/UpdateApp/blob/master/README-zh.md)
-
-App update, is mainly responsible for app download and installation, etc.
-Permission and Service are has been added to the aar inside.
-
+开箱即用的app更新，主要负责软件下载、软件安装等 Permission和Service默认添加在aar包里面的，如果使用gradle不需要
+在意下面的配置了。
 
 ### Permission
 
@@ -30,21 +27,21 @@ Permission and Service are has been added to the aar inside.
 ```
 
 
-NOTE: smallIcon where there is a major need，[Micro Tips Details Android notification bar](http://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650235923&idx=1&sn=af1fc1a6b60282732d94b0e7a354488f&scene=1&srcid=0517c0t12GnMgc5tWAkEMHNs#)
+注：smallIco 有个需要主要的地方，[详情 Android通知栏的微技巧](http://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650235923&idx=1&sn=af1fc1a6b60282732d94b0e7a354488f&scene=1&srcid=0517c0t12GnMgc5tWAkEMHNs#)
 
 
 # Params
 
-|parameter|description|
+|参数|描述|
 |----|:---|
-|downloadUrl|download link|
-|icoResId|Notification icon，default is app icon|
-|icoSmallResId|Notification bottom right corner icon，default is app icon|
-|storeDir|store apk dir，default in sdcard/Android/package/update|
-|updateProgress| Refresh notification progress bar, default updated each time you download add 1%|
-|downloadNotificationFlag|downloading Notification Flag|
-|downloadErrorNotificationFlag|download error Notification Flag|
-|downloadSuccessNotificationFlag|download success Notification Flag|
+|downloadUrl|下载地址|
+|icoResId|Notification 的icon，默认应用的icon|
+|icoSmallResId|Notification 右下角的icon，默认应用的icon|
+|storeDir|保存在sdcard路径，默认在sdcard/Android/package/update|
+|updateProgress| 刷新notification 进度条，默认每次下载1%更新一次|
+|downloadNotificationFlag|下载进行中的Notification Flag|
+|downloadErrorNotificationFlag|下载失败的Notification Flag|
+|downloadSuccessNotificationFlag|下载成功的Notification Flag|
 
 ### Gradle
 
