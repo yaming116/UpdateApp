@@ -31,4 +31,5 @@ dependencies {
     compile 'com.android.support:design:23.4.0'
 
     compile project(':library')
+
 }
