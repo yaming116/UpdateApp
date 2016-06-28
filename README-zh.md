@@ -44,6 +44,7 @@ UpdateApp
 |downloadNotificationFlag|下载进行中的Notification Flag|
 |downloadErrorNotificationFlag|下载失败的Notification Flag|
 |downloadSuccessNotificationFlag|下载成功的Notification Flag|
+|isSendBroadcast|是否会发送下载状态广播|
 
 ### Gradle
 

@@ -47,7 +47,7 @@ NOTE: smallIcon where there is a major need，[Micro Tips Details Android notifi
 |downloadNotificationFlag|downloading Notification Flag|
 |downloadErrorNotificationFlag|download error Notification Flag|
 |downloadSuccessNotificationFlag|download success Notification Flag|
-
+|isSendBroadcast|Whether to send broadcast|
 ### Gradle
 
 ```groovy

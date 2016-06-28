@@ -14,6 +14,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Log;
@@ -31,11 +32,18 @@ import java.net.URL;
  */
 public class UpdateService extends Service {
     public static final String TAG =  "UpdateService";
+    public static final String ACTION = "me.shenfan.UPDATE_APP";
+    public static final String STATUS = "status";
+    public static final String PROGRESS = "progress";
     public static boolean DEBUG = false;
 
     //下载大小通知频率
     public static final int UPDATE_NUMBER_SIZE = 1;
     public static final int DEFAULT_RES_ID = -1;
+
+    public static final int UPDATE_PROGRESS_STATUS = 0;
+    public static final int UPDATE_ERROR_STATUS = -1;
+    public static final int UPDATE_SUCCESS_STATUS = 1;
 
     //params
     private static final String URL = "downloadUrl";
@@ -46,6 +54,7 @@ public class UpdateService extends Service {
     private static final String DOWNLOAD_NOTIFICATION_FLAG = "downloadNotificationFlag";
     private static final String DOWNLOAD_SUCCESS_NOTIFICATION_FLAG = "downloadSuccessNotificationFlag";
     private static final String DOWNLOAD_ERROR_NOTIFICATION_FLAG = "downloadErrorNotificationFlag";
+    private static final String IS_SEND_BROADCAST = "isSendBroadcast";
 
 
     private String downloadUrl;
@@ -56,6 +65,7 @@ public class UpdateService extends Service {
     private int downloadNotificationFlag;
     private int downloadSuccessNotificationFlag;
     private int downloadErrorNotificationFlag;
+    private boolean isSendBroadcast;
 
 
     private boolean startDownload;//开始下载
@@ -64,6 +74,8 @@ public class UpdateService extends Service {
     private NotificationManager manager;
     private int notifyId;
     private String appName;
+    private LocalBroadcastManager localBroadcastManager;
+    private Intent localIntent;
 
     /**
      * whether debug
@@ -131,6 +143,7 @@ public class UpdateService extends Service {
             downloadNotificationFlag = intent.getIntExtra(DOWNLOAD_NOTIFICATION_FLAG, 0);
             downloadErrorNotificationFlag = intent.getIntExtra(DOWNLOAD_ERROR_NOTIFICATION_FLAG, 0);
             downloadSuccessNotificationFlag = intent.getIntExtra(DOWNLOAD_SUCCESS_NOTIFICATION_FLAG, 0);
+            isSendBroadcast = intent.getBooleanExtra(IS_SEND_BROADCAST, false);
 
 
             if (DEBUG){
@@ -142,10 +155,12 @@ public class UpdateService extends Service {
                 Log.d(TAG, "downloadNotificationFlag: " + downloadNotificationFlag);
                 Log.d(TAG, "downloadErrorNotificationFlag: " + downloadErrorNotificationFlag);
                 Log.d(TAG, "downloadSuccessNotificationFlag: " + downloadSuccessNotificationFlag);
+                Log.d(TAG, "isSendBroadcast: " + isSendBroadcast);
             }
 
             notifyId = startId;
             buildNotification();
+            buildBroadcast();
             new DownloadApk(this).execute(downloadUrl);
         }
         return super.onStartCommand(intent, flags, startId);
@@ -155,6 +170,13 @@ public class UpdateService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        localIntent = null;
+        builder = null;
+        super.onDestroy();
     }
 
     public String getApplicationName() {
@@ -169,6 +191,23 @@ public class UpdateService extends Service {
         String applicationName =
                 (String) packageManager.getApplicationLabel(applicationInfo);
         return applicationName;
+    }
+
+    private void buildBroadcast(){
+        if (!isSendBroadcast){
+            return;
+        }
+        localBroadcastManager = LocalBroadcastManager.getInstance(this);
+        localIntent = new Intent(ACTION);
+    }
+
+    private void sendLocalBroadcast(int status, int progress){
+        if (!isSendBroadcast || localIntent == null){
+            return;
+        }
+        localIntent.putExtra(STATUS, status);
+        localIntent.putExtra(PROGRESS, progress);
+        localBroadcastManager.sendBroadcast(localIntent);
     }
 
     private void buildNotification(){
@@ -189,6 +228,7 @@ public class UpdateService extends Service {
         builder.setContentTitle(appName);
         builder.setContentText(getString(R.string.update_app_model_prepare, 1));
         manager.notify(notifyId, builder.build());
+        sendLocalBroadcast(UPDATE_PROGRESS_STATUS, 1);
     }
 
     /**
@@ -201,6 +241,7 @@ public class UpdateService extends Service {
             builder.setProgress(100, progress, false);
             builder.setContentText(getString(R.string.update_app_model_progress, progress, "%"));
             manager.notify(notifyId, builder.build());
+            sendLocalBroadcast(UPDATE_PROGRESS_STATUS, progress);
         }
     }
 
@@ -214,6 +255,7 @@ public class UpdateService extends Service {
         Notification n = builder.build();
         n.contentIntent = intent;
         manager.notify(notifyId, n);
+        sendLocalBroadcast(UPDATE_SUCCESS_STATUS, 100);
         startActivity(i);
         stopSelf();
     }
@@ -229,6 +271,7 @@ public class UpdateService extends Service {
         Notification n = builder.build();
         n.contentIntent = intent;
         manager.notify(notifyId, n);
+        sendLocalBroadcast(UPDATE_ERROR_STATUS, -1);
         stopSelf();
     }
 
@@ -373,6 +416,7 @@ public class UpdateService extends Service {
         private int downloadNotificationFlag;
         private int downloadSuccessNotificationFlag;
         private int downloadErrorNotificationFlag;
+        private boolean isSendBroadcast;
 
         protected Builder(String downloadUrl){
             this.downloadUrl = downloadUrl;
@@ -455,6 +499,15 @@ public class UpdateService extends Service {
             return this;
         }
 
+        public boolean isSendBroadcast() {
+            return isSendBroadcast;
+        }
+
+        public Builder setIsSendBroadcast(boolean isSendBroadcast) {
+            this.isSendBroadcast = isSendBroadcast;
+            return this;
+        }
+
         public Builder build(Context context){
             if (context == null){
                 throw new NullPointerException("context == null");
@@ -477,6 +530,7 @@ public class UpdateService extends Service {
             intent.putExtra(DOWNLOAD_NOTIFICATION_FLAG, downloadNotificationFlag);
             intent.putExtra(DOWNLOAD_SUCCESS_NOTIFICATION_FLAG, downloadSuccessNotificationFlag);
             intent.putExtra(DOWNLOAD_ERROR_NOTIFICATION_FLAG, downloadErrorNotificationFlag);
+            intent.putExtra(IS_SEND_BROADCAST, isSendBroadcast);
             context.startService(intent);
 
             return this;

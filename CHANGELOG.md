@@ -1,3 +1,10 @@
+## 1.0.2
+
+_2016-xx-xx_
+
+* add isSendBroadcast Whether to send broadcast
+
+
 ## 1.0.1
 
 _2016-6-14_
