@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Binder;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
@@ -67,6 +68,22 @@ public class UpdateService extends Service {
     private int downloadErrorNotificationFlag;
     private boolean isSendBroadcast;
 
+    private UpdateProgressListener updateProgressListener;
+    private LocalBinder localBinder = new LocalBinder();
+
+    /**
+     * Class used for the client Binder.
+     */
+    public class LocalBinder extends Binder{
+        /**
+         * set update progress call back
+         * @param listener
+         */
+        public void setUpdateProgressListener(UpdateProgressListener listener){
+            UpdateService.this.setUpdateProgressListener(listener);
+        }
+    }
+
 
     private boolean startDownload;//开始下载
     private int lastProgressNumber;
@@ -76,6 +93,7 @@ public class UpdateService extends Service {
     private String appName;
     private LocalBroadcastManager localBroadcastManager;
     private Intent localIntent;
+    private DownloadApk downloadApkTask;
 
     /**
      * whether debug
@@ -161,7 +179,8 @@ public class UpdateService extends Service {
             notifyId = startId;
             buildNotification();
             buildBroadcast();
-            new DownloadApk(this).execute(downloadUrl);
+            downloadApkTask = new DownloadApk(this);
+            downloadApkTask.execute(downloadUrl);
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -169,13 +188,30 @@ public class UpdateService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return localBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return true;
+    }
+
+    public void setUpdateProgressListener(UpdateProgressListener updateProgressListener) {
+        this.updateProgressListener = updateProgressListener;
     }
 
     @Override
     public void onDestroy() {
+        if (downloadApkTask != null){
+            downloadApkTask.cancel(true);
+        }
+
+        if (updateProgressListener != null){
+            updateProgressListener = null;
+        }
         localIntent = null;
         builder = null;
+
         super.onDestroy();
     }
 
@@ -229,6 +265,9 @@ public class UpdateService extends Service {
         builder.setContentText(getString(R.string.update_app_model_prepare, 1));
         manager.notify(notifyId, builder.build());
         sendLocalBroadcast(UPDATE_PROGRESS_STATUS, 1);
+        if (updateProgressListener != null){
+            updateProgressListener.start();
+        }
     }
 
     /**
@@ -242,6 +281,9 @@ public class UpdateService extends Service {
             builder.setContentText(getString(R.string.update_app_model_progress, progress, "%"));
             manager.notify(notifyId, builder.build());
             sendLocalBroadcast(UPDATE_PROGRESS_STATUS, progress);
+            if (updateProgressListener != null){
+                updateProgressListener.update(progress);
+            }
         }
     }
 
@@ -256,6 +298,9 @@ public class UpdateService extends Service {
         n.contentIntent = intent;
         manager.notify(notifyId, n);
         sendLocalBroadcast(UPDATE_SUCCESS_STATUS, 100);
+        if (updateProgressListener != null){
+            updateProgressListener.success();
+        }
         startActivity(i);
         stopSelf();
     }
@@ -272,6 +317,9 @@ public class UpdateService extends Service {
         n.contentIntent = intent;
         manager.notify(notifyId, n);
         sendLocalBroadcast(UPDATE_ERROR_STATUS, -1);
+        if (updateProgressListener != null){
+            updateProgressListener.error();
+        }
         stopSelf();
     }
 
