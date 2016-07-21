@@ -57,7 +57,7 @@ allprojects {
 }
 
 dependencies {
-    compile 'com.github.yaming116:UpdateApp:1.0.1'
+    compile 'com.github.yaming116:UpdateApp:1.0.2'
 }
 ```
 

@@ -1,8 +1,9 @@
 ## 1.0.2
 
-_2016-xx-xx_
+_2016-07-21_
 
 * add isSendBroadcast Whether to send broadcast
+* replace v7 NotificationCompat to v4
 
 
 ## 1.0.1
