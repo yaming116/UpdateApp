@@ -30,6 +30,6 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.4.0'
     compile 'com.android.support:design:23.4.0'
 
-    compile project(':library')
+    compile 'com.github.yaming116:UpdateApp:1.0.2'
 
 }
