@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -34,7 +35,7 @@ import java.net.URL;
  * Created by Sun on 2016/6/12.
  */
 public class UpdateService extends Service {
-    public static final String TAG =  "UpdateService";
+    public static final String TAG = "UpdateService";
     public static final String ACTION = "me.shenfan.UPDATE_APP";
     public static final String STATUS = "status";
     public static final String PROGRESS = "progress";
@@ -76,12 +77,13 @@ public class UpdateService extends Service {
     /**
      * Class used for the client Binder.
      */
-    public class LocalBinder extends Binder{
+    public class LocalBinder extends Binder {
         /**
          * set update progress call back
+         *
          * @param listener
          */
-        public void setUpdateProgressListener(UpdateProgressListener listener){
+        public void setUpdateProgressListener(UpdateProgressListener listener) {
             UpdateService.this.setUpdateProgressListener(listener);
         }
     }
@@ -100,29 +102,40 @@ public class UpdateService extends Service {
     /**
      * whether debug
      */
-    public static void debug(){
+    public static void debug() {
         DEBUG = true;
     }
 
-    private static Intent installIntent(Context context, String path){
+    private static Intent installIntent(Context context, String path) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Uri fileUri = FileProvider.getUriForFile(context, getFileProviderAuthority(context), new File(path));
+            intent.setDataAndType(fileUri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } else {
+            intent.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
+        }
+        return intent;
+    }
+
+    /**
+     * 获取FileProvider的auth
+     */
+    private static String getFileProviderAuthority(Context context) {
         try {
-            Uri fileUri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileProvider", new File(path));
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (Build.VERSION.SDK_INT >= 24) {
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                intent.setDataAndType(fileUri, "application/vnd.android.package-archive");
-            } else {
-                intent.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
+            for (ProviderInfo provider : context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_PROVIDERS).providers) {
+                if (FileProvider.class.getName().equals(provider.name) && provider.authority.endsWith(".update_app.file_provider")) {
+                    return provider.authority;
+                }
             }
-            return intent;
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (PackageManager.NameNotFoundException ignore) {
         }
         return null;
     }
 
-    private static Intent webLauncher(String downloadUrl){
+    private static Intent webLauncher(String downloadUrl) {
         Uri download = Uri.parse(downloadUrl);
         Intent intent = new Intent(Intent.ACTION_VIEW, download);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -136,13 +149,13 @@ public class UpdateService extends Service {
         return downloadUrl.substring(downloadUrl.lastIndexOf("/"));
     }
 
-    private static File getDownloadDir(UpdateService service){
+    private static File getDownloadDir(UpdateService service) {
         File downloadDir = null;
         if (android.os.Environment.getExternalStorageState().equals(
                 android.os.Environment.MEDIA_MOUNTED)) {
-            if (service.storeDir != null){
+            if (service.storeDir != null) {
                 downloadDir = new File(Environment.getExternalStorageDirectory(), service.storeDir);
-            }else {
+            } else {
                 downloadDir = new File(service.getExternalCacheDir(), "update");
             }
         } else {
@@ -163,7 +176,7 @@ public class UpdateService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!startDownload && intent != null){
+        if (!startDownload && intent != null) {
             startDownload = true;
             downloadUrl = intent.getStringExtra(URL);
             icoResId = intent.getIntExtra(ICO_RES_ID, DEFAULT_RES_ID);
@@ -176,7 +189,7 @@ public class UpdateService extends Service {
             isSendBroadcast = intent.getBooleanExtra(IS_SEND_BROADCAST, false);
 
 
-            if (DEBUG){
+            if (DEBUG) {
                 Log.d(TAG, "downloadUrl: " + downloadUrl);
                 Log.d(TAG, "icoResId: " + icoResId);
                 Log.d(TAG, "icoSmallResId: " + icoSmallResId);
@@ -214,11 +227,11 @@ public class UpdateService extends Service {
 
     @Override
     public void onDestroy() {
-        if (downloadApkTask != null){
+        if (downloadApkTask != null) {
             downloadApkTask.cancel(true);
         }
 
-        if (updateProgressListener != null){
+        if (updateProgressListener != null) {
             updateProgressListener = null;
         }
         localIntent = null;
@@ -241,16 +254,16 @@ public class UpdateService extends Service {
         return applicationName;
     }
 
-    private void buildBroadcast(){
-        if (!isSendBroadcast){
+    private void buildBroadcast() {
+        if (!isSendBroadcast) {
             return;
         }
         localBroadcastManager = LocalBroadcastManager.getInstance(this);
         localIntent = new Intent(ACTION);
     }
 
-    private void sendLocalBroadcast(int status, int progress){
-        if (!isSendBroadcast || localIntent == null){
+    private void sendLocalBroadcast(int status, int progress) {
+        if (!isSendBroadcast || localIntent == null) {
             return;
         }
         localIntent.putExtra(STATUS, status);
@@ -258,10 +271,10 @@ public class UpdateService extends Service {
         localBroadcastManager.sendBroadcast(localIntent);
     }
 
-    private void buildNotification(){
+    private void buildNotification() {
         manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         builder = new NotificationCompat.Builder(this);
-        builder.setContentTitle(getString(R.string.update_app_model_prepare, appName))
+        builder.setContentTitle(getString(R.string.update_app_model_prepare))
                 .setWhen(System.currentTimeMillis())
                 .setProgress(100, 1, false)
                 .setSmallIcon(icoSmallResId)
@@ -272,28 +285,27 @@ public class UpdateService extends Service {
         manager.notify(notifyId, builder.build());
     }
 
-    private void start(){
+    private void start() {
         builder.setContentTitle(appName);
-        builder.setContentText(getString(R.string.update_app_model_prepare, 1));
+        builder.setContentText(getString(R.string.update_app_model_prepare));
         manager.notify(notifyId, builder.build());
         sendLocalBroadcast(UPDATE_PROGRESS_STATUS, 1);
-        if (updateProgressListener != null){
+        if (updateProgressListener != null) {
             updateProgressListener.start();
         }
     }
 
     /**
-     *
      * @param progress download percent , max 100
      */
-    private void update(int progress){
-        if (progress - lastProgressNumber > updateProgress){
+    private void update(int progress) {
+        if (progress - lastProgressNumber > updateProgress) {
             lastProgressNumber = progress;
             builder.setProgress(100, progress, false);
             builder.setContentText(getString(R.string.update_app_model_progress, progress, "%"));
             manager.notify(notifyId, builder.build());
             sendLocalBroadcast(UPDATE_PROGRESS_STATUS, progress);
-            if (updateProgressListener != null){
+            if (updateProgressListener != null) {
                 updateProgressListener.update(progress);
             }
         }
@@ -310,14 +322,14 @@ public class UpdateService extends Service {
         n.contentIntent = intent;
         manager.notify(notifyId, n);
         sendLocalBroadcast(UPDATE_SUCCESS_STATUS, 100);
-        if (updateProgressListener != null){
+        if (updateProgressListener != null) {
             updateProgressListener.success();
         }
         startActivity(i);
         stopSelf();
     }
 
-    private void error(){
+    private void error() {
         Intent i = webLauncher(downloadUrl);
         PendingIntent intent = PendingIntent.getActivity(this, 0, i,
                 PendingIntent.FLAG_UPDATE_CURRENT);
@@ -329,17 +341,17 @@ public class UpdateService extends Service {
         n.contentIntent = intent;
         manager.notify(notifyId, n);
         sendLocalBroadcast(UPDATE_ERROR_STATUS, -1);
-        if (updateProgressListener != null){
+        if (updateProgressListener != null) {
             updateProgressListener.error();
         }
         stopSelf();
     }
 
-    private static class DownloadApk extends AsyncTask<String, Integer, String>{
+    private static class DownloadApk extends AsyncTask<String, Integer, String> {
 
         private WeakReference<UpdateService> updateServiceWeakReference;
 
-        public DownloadApk(UpdateService service){
+        public DownloadApk(UpdateService service) {
             updateServiceWeakReference = new WeakReference<>(service);
         }
 
@@ -347,7 +359,7 @@ public class UpdateService extends Service {
         protected void onPreExecute() {
             super.onPreExecute();
             UpdateService service = updateServiceWeakReference.get();
-            if (service != null){
+            if (service != null) {
                 service.start();
             }
         }
@@ -359,12 +371,12 @@ public class UpdateService extends Service {
 
             final File file = new File(UpdateService.getDownloadDir(updateServiceWeakReference.get()),
                     UpdateService.getSaveFileName(downloadUrl));
-            if (DEBUG){
+            if (DEBUG) {
                 Log.d(TAG, "download url is " + downloadUrl);
                 Log.d(TAG, "download apk cache at " + file.getAbsolutePath());
             }
             File dir = file.getParentFile();
-            if (!dir.exists()){
+            if (!dir.exists()) {
                 dir.mkdirs();
             }
 
@@ -379,7 +391,7 @@ public class UpdateService extends Service {
                 httpConnection.setConnectTimeout(20000);
                 httpConnection.setReadTimeout(20000);
 
-                if (DEBUG){
+                if (DEBUG) {
                     Log.d(TAG, "download status code: " + httpConnection.getResponseCode());
                 }
 
@@ -439,11 +451,11 @@ public class UpdateService extends Service {
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
-            if (DEBUG){
+            if (DEBUG) {
                 Log.d(TAG, "current progress is " + values[0]);
             }
             UpdateService service = updateServiceWeakReference.get();
-            if (service != null){
+            if (service != null) {
                 service.update(values[0]);
             }
         }
@@ -452,10 +464,10 @@ public class UpdateService extends Service {
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
             UpdateService service = updateServiceWeakReference.get();
-            if (service != null){
-                if (s != null){
+            if (service != null) {
+                if (s != null) {
                     service.success(s);
-                }else {
+                } else {
                     service.error();
                 }
             }
@@ -466,7 +478,7 @@ public class UpdateService extends Service {
     /**
      * a builder class helper use UpdateService
      */
-    public static class Builder{
+    public static class Builder {
 
         private String downloadUrl;
         private int icoResId = DEFAULT_RES_ID;             //default app ico
@@ -478,11 +490,11 @@ public class UpdateService extends Service {
         private int downloadErrorNotificationFlag;
         private boolean isSendBroadcast;
 
-        protected Builder(String downloadUrl){
+        protected Builder(String downloadUrl) {
             this.downloadUrl = downloadUrl;
         }
 
-        public static Builder create(String downloadUrl){
+        public static Builder create(String downloadUrl) {
             if (downloadUrl == null) {
                 throw new NullPointerException("downloadUrl == null");
             }
@@ -516,7 +528,7 @@ public class UpdateService extends Service {
         }
 
         public Builder setUpdateProgress(int updateProgress) {
-            if (updateProgress < 1){
+            if (updateProgress < 1) {
                 throw new IllegalArgumentException("updateProgress < 1");
             }
             this.updateProgress = updateProgress;
@@ -568,19 +580,19 @@ public class UpdateService extends Service {
             return this;
         }
 
-        public Builder build(Context context){
-            if (context == null){
+        public Builder build(Context context) {
+            if (context == null) {
                 throw new NullPointerException("context == null");
             }
             Intent intent = new Intent();
             intent.setClass(context, UpdateService.class);
             intent.putExtra(URL, downloadUrl);
 
-            if (icoResId == DEFAULT_RES_ID){
+            if (icoResId == DEFAULT_RES_ID) {
                 icoResId = getIcon(context);
             }
 
-            if (icoSmallResId == DEFAULT_RES_ID){
+            if (icoSmallResId == DEFAULT_RES_ID) {
                 icoSmallResId = icoResId;
             }
             intent.putExtra(ICO_RES_ID, icoResId);
@@ -596,7 +608,7 @@ public class UpdateService extends Service {
             return this;
         }
 
-        private int getIcon(Context context){
+        private int getIcon(Context context) {
 
             final PackageManager packageManager = context.getPackageManager();
             ApplicationInfo appInfo = null;
@@ -605,7 +617,7 @@ public class UpdateService extends Service {
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
             }
-            if (appInfo != null){
+            if (appInfo != null) {
                 return appInfo.icon;
             }
             return 0;
