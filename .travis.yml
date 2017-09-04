@@ -6,7 +6,7 @@ android:
     - android-25
     - extra-android-m2repository
     - extra-android-support
-    -sys-img-armeabi-v7a-android-22
+    - sys-img-armeabi-v7a-android-22
 
   licenses:
     - 'android-sdk-license.*'
