@@ -274,7 +274,7 @@ public class UpdateService extends Service {
     private void buildNotification() {
         manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         builder = new NotificationCompat.Builder(this);
-        builder.setContentTitle(getString(R.string.update_app_model_prepare)+appName)
+        builder.setContentTitle(getString(R.string.update_app_model_prepare, appName))
                 .setWhen(System.currentTimeMillis())
                 .setProgress(100, 1, false)
                 .setSmallIcon(icoSmallResId)
