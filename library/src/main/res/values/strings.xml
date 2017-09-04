@@ -1,5 +1,5 @@
 <resources>
-    <string name="update_app_model_prepare">preparing to download</string>
+    <string name="update_app_model_prepare">preparing to download %s</string>
     <string name="update_app_model_progress">downloading %1$d%2$s</string>
     <string name="update_app_model_success">download success(click install)</string>
     <string name="update_app_model_error">download fail(click to use the browser to download)</string>
