@@ -12,10 +12,12 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -102,12 +104,22 @@ public class UpdateService extends Service {
         DEBUG = true;
     }
 
-    private static Intent installIntent(String path){
-        Uri uri = Uri.fromFile(new File(path));
-        Intent installIntent = new Intent(Intent.ACTION_VIEW);
-        installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        installIntent.setDataAndType(uri, "application/vnd.android.package-archive");
-        return installIntent;
+    private static Intent installIntent(Context context, String path){
+        try {
+            Uri fileUri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileProvider", new File(path));
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (Build.VERSION.SDK_INT >= 24) {
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setDataAndType(fileUri, "application/vnd.android.package-archive");
+            } else {
+                intent.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
+            }
+            return intent;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private static Intent webLauncher(String downloadUrl){
@@ -290,7 +302,7 @@ public class UpdateService extends Service {
     private void success(String path) {
         builder.setProgress(0, 0, false);
         builder.setContentText(getString(R.string.update_app_model_success));
-        Intent i = installIntent(path);
+        Intent i = installIntent(this, path);
         PendingIntent intent = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(intent);
         builder.setDefaults(downloadSuccessNotificationFlag);
