@@ -144,7 +144,7 @@ public class UpdateService extends Service {
 
     private static String getSaveFileName(String downloadUrl) {
         if (downloadUrl == null || TextUtils.isEmpty(downloadUrl)) {
-            return "noName.apk";
+            return  System.currentTimeMillis() + ".apk";
         }
         return downloadUrl.substring(downloadUrl.lastIndexOf("/"));
     }
