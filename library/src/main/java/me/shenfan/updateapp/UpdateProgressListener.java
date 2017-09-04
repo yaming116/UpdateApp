@@ -9,21 +9,21 @@ public interface UpdateProgressListener {
     /**
      * download start
      */
-    public void start();
+     void start();
 
     /**
      * update download progress
      * @param progress
      */
-    public void update(int progress);
+     void update(int progress);
 
     /**
      * download success
      */
-    public void success();
+     void success();
 
     /**
      * download error
      */
-    public void error();
+     void error();
 }
