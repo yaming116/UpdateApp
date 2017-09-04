@@ -5,7 +5,7 @@
         path="/update" />
     <external-path
         name="update_app_external_files"
-        path="/update" />
+        path="/" />
     <external-cache-path
         name="update_app_external_cache_files"
         path="/update" />
