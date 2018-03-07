@@ -1,6 +1,8 @@
 package me.shenfan.updateapp;
 
+import android.annotation.TargetApi;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -10,6 +12,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -271,8 +274,21 @@ public class UpdateService extends Service {
         localBroadcastManager.sendBroadcast(localIntent);
     }
 
+    @TargetApi(26)
     private void buildNotification() {
         manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            CharSequence name = "update_channel";
+            String Description = "zhuojian update channel";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(String.valueOf(notifyId), name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            mChannel.setLightColor(Color.BLUE);
+            mChannel.enableVibration(true);
+            mChannel.setShowBadge(false);
+            manager.createNotificationChannel(mChannel);
+        }
         builder = new NotificationCompat.Builder(this);
         builder.setContentTitle(getString(R.string.update_app_model_prepare, appName))
                 .setWhen(System.currentTimeMillis())

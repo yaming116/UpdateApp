@@ -56,6 +56,11 @@ allprojects {
     }
 }
 
+`SNAPSHOT`
+dependencies {
+    compile 'com.github.yaming116:UpdateApp:1.0.4-SNAPSHOT'
+}
+
 dependencies {
     compile 'com.github.yaming116:UpdateApp:1.0.2'
 }
