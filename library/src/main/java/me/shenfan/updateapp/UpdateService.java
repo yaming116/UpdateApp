@@ -20,7 +20,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.LocalNotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
@@ -94,7 +94,7 @@ public class UpdateService extends Service {
 
     private boolean startDownload;//开始下载
     private int lastProgressNumber;
-    private NotificationCompat.Builder builder;
+    private LocalNotificationCompat.Builder builder;
     private NotificationManager manager;
     private int notifyId;
     private String appName;
@@ -277,7 +277,7 @@ public class UpdateService extends Service {
     @TargetApi(26)
     private void buildNotification() {
         manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        builder = new NotificationCompat.Builder(this);
+        builder = new LocalNotificationCompat.Builder(this);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             CharSequence name = "update_channel";
             String Description = "zhuojian update channel";
@@ -301,6 +301,7 @@ public class UpdateService extends Service {
 
         manager.notify(notifyId, builder.build());
     }
+
 
     private void start() {
         builder.setContentTitle(appName);
