@@ -277,6 +277,7 @@ public class UpdateService extends Service {
     @TargetApi(26)
     private void buildNotification() {
         manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        builder = new NotificationCompat.Builder(this);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             CharSequence name = "update_channel";
             String Description = "zhuojian update channel";
@@ -288,8 +289,8 @@ public class UpdateService extends Service {
             mChannel.enableVibration(true);
             mChannel.setShowBadge(false);
             manager.createNotificationChannel(mChannel);
+            builder.setChannelId(String.valueOf(notifyId));
         }
-        builder = new NotificationCompat.Builder(this);
         builder.setContentTitle(getString(R.string.update_app_model_prepare, appName))
                 .setWhen(System.currentTimeMillis())
                 .setProgress(100, 1, false)
