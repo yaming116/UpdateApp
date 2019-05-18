@@ -1,3 +1,11 @@
+## 1.0.4
+
+_2017-09-04_
+
+* support android 7.0
+* set default apk name is {{TimeMillis}}.apk
+* fix notification content error
+
 ## 1.0.3
 
 _2016-09-12_
